@@ -1,0 +1,29 @@
+{
+  "name": "cardio-viz-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vueuse/core": "^10.3.0",
+    "axios": "^1.7.9",
+    "dayjs": "^1.11.9",
+    "echarts": "^5.4.3",
+    "element-plus": "^2.9.5",
+    "lodash-es": "^4.17.21",
+    "pinia": "^2.1.6",
+    "vue": "^3.3.4",
+    "vue-echarts": "^6.6.1",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.3.1",
+    "sass": "^1.85.0",
+    "unplugin-auto-import": "^0.16.6",
+    "unplugin-vue-components": "^0.25.1",
+    "vite": "^4.4.9"
+  }
+}

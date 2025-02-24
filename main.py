@@ -6,12 +6,13 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import Dash, html, dcc
-from dash.dependencies import Input, Output, State
+from dash import Dash, html, dcc, Input, Output, State
 import dash_bootstrap_components as dbc
 import random
 from datetime import datetime, timedelta
 import networkx as nx
+import time
+from collections import deque
 
 def generate_patient_data(n_patients=1000):
     """生成更丰富的模拟患者数据"""
@@ -165,17 +166,59 @@ def create_network_graph(df):
     
     return edge_x, edge_y, node_x, node_y, node_text, node_color
 
+def generate_real_time_data(base_data, window_size=50):
+    """生成实时数据"""
+    while True:
+        # 随机选择一部分数据进行更新
+        sample_size = random.randint(5, 10)
+        sample_indices = random.sample(range(len(base_data)), sample_size)
+        
+        for idx in sample_indices:
+            base_data[idx]['systolic_bp'] = random.randint(90, 180)
+            base_data[idx]['heart_rate'] = random.randint(60, 100)
+            
+            # 更新风险评分
+            risk_score = 0
+            if base_data[idx]['age'] > 60: risk_score += 2
+            if base_data[idx]['systolic_bp'] > 140: risk_score += 2
+            if base_data[idx]['diastolic_bp'] > 90: risk_score += 1
+            if base_data[idx]['heart_rate'] > 90: risk_score += 1
+            if base_data[idx]['cholesterol'] > 200: risk_score += 2
+            if base_data[idx]['smoking'] == '是': risk_score += 2
+            if base_data[idx]['diabetes'] == '是': risk_score += 2
+            if base_data[idx]['bmi'] > 30: risk_score += 1
+            if base_data[idx]['exercise_hours'] < 3: risk_score += 1
+            
+            if risk_score <= 4:
+                base_data[idx]['risk_level'] = '低'
+            elif risk_score <= 8:
+                base_data[idx]['risk_level'] = '中'
+            else:
+                base_data[idx]['risk_level'] = '高'
+        
+        yield pd.DataFrame(base_data)
+        time.sleep(2)  # 每2秒更新一次
+
 def create_dashboard(df):
     """创建更丰富的交互式数据可视化仪表板"""
     app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
     
-    # 计算统计数据
+    # 初始统计数据
     total_patients = len(df)
     high_risk_count = len(df[df['risk_level'] == '高'])
     high_risk_percentage = round((high_risk_count / total_patients) * 100, 1)
     
     # 创建关联网络图数据
     edge_x, edge_y, node_x, node_y, node_text, node_color = create_network_graph(df)
+    
+    # 存储实时数据
+    app.real_time_data = deque(maxlen=50)
+    for i in range(6):
+        app.real_time_data.append({
+            'timestamp': datetime.now() - timedelta(minutes=5-i),
+            'systolic_bp': df.iloc[0]['systolic_bp'],
+            'heart_rate': df.iloc[0]['heart_rate']
+        })
     
     app.layout = dbc.Container([
         # 顶部标题和统计信息
@@ -187,13 +230,13 @@ def create_dashboard(df):
             )
         ]),
         
-        # 统计卡片行
+        # 统计卡片行（添加动画效果）
         dbc.Row([
             dbc.Col(
                 dbc.Card([
                     dbc.CardBody([
                         html.H4("总患者数", className="card-title text-center"),
-                        html.H2(f"{total_patients}", className="text-center text-primary")
+                        html.H2(id='total-patients', className="text-center text-primary animate__animated animate__fadeIn")
                     ])
                 ], className="mb-4 shadow"),
                 width=4
@@ -202,7 +245,7 @@ def create_dashboard(df):
                 dbc.Card([
                     dbc.CardBody([
                         html.H4("高风险患者", className="card-title text-center"),
-                        html.H2(f"{high_risk_count}", className="text-center text-danger")
+                        html.H2(id='high-risk-patients', className="text-center text-danger animate__animated animate__fadeIn")
                     ])
                 ], className="mb-4 shadow"),
                 width=4
@@ -211,7 +254,7 @@ def create_dashboard(df):
                 dbc.Card([
                     dbc.CardBody([
                         html.H4("高风险比例", className="card-title text-center"),
-                        html.H2(f"{high_risk_percentage}%", className="text-center text-warning")
+                        html.H2(id='risk-percentage', className="text-center text-warning animate__animated animate__fadeIn")
                     ])
                 ], className="mb-4 shadow"),
                 width=4
@@ -220,25 +263,44 @@ def create_dashboard(df):
         
         html.Hr(),
         
+        # 控制面板
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("数据更新控制"),
+                    dbc.CardBody([
+                        dbc.Switch(
+                            id='auto-update-switch',
+                            label='自动更新数据',
+                            value=True,
+                            className="mb-2"
+                        ),
+                        dbc.Select(
+                            id='update-interval-select',
+                            options=[
+                                {'label': '快速 (1秒)', 'value': '1000'},
+                                {'label': '正常 (2秒)', 'value': '2000'},
+                                {'label': '慢速 (5秒)', 'value': '5000'}
+                            ],
+                            value='2000',
+                            className="mb-2"
+                        )
+                    ])
+                ], className="mb-4 shadow")
+            ], width=12)
+        ]),
+        
         # 第一行：风险预测和治疗效果
         dbc.Row([
             dbc.Col([
                 dbc.Card([
-                    dbc.CardHeader("风险预测分析"),
+                    dbc.CardHeader("实时风险分布"),
                     dbc.CardBody([
-                        dcc.Graph(
-                            id='risk-prediction',
-                            figure=px.scatter(
-                                df,
-                                x='age',
-                                y='systolic_bp',
-                                color='risk_level',
-                                size='cholesterol',
-                                hover_data=['patient_id', 'gender', 'diabetes'],
-                                title='患者风险分布',
-                                labels={'age': '年龄', 'systolic_bp': '收缩压 (mmHg)'},
-                                color_discrete_map={'低': 'green', '中': 'yellow', '高': 'red'}
-                            ).update_layout(transition_duration=500)
+                        dcc.Graph(id='risk-prediction'),
+                        dcc.Interval(
+                            id='risk-update-interval',
+                            interval=2000,
+                            n_intervals=0
                         )
                     ])
                 ], className="mb-4 shadow")
@@ -248,15 +310,11 @@ def create_dashboard(df):
                 dbc.Card([
                     dbc.CardHeader("治疗效果分析"),
                     dbc.CardBody([
-                        dcc.Graph(
-                            id='treatment-effect',
-                            figure=px.sunburst(
-                                df,
-                                path=['treatment', 'treatment_response', 'risk_level'],
-                                title='治疗方案效果分析',
-                                color='risk_level',
-                                color_discrete_map={'低': 'green', '中': 'yellow', '高': 'red'}
-                            ).update_layout(transition_duration=500)
+                        dcc.Graph(id='treatment-effect'),
+                        dcc.Interval(
+                            id='treatment-update-interval',
+                            interval=2000,
+                            n_intervals=0
                         )
                     ])
                 ], className="mb-4 shadow")
@@ -265,43 +323,17 @@ def create_dashboard(df):
         
         html.Hr(),
         
-        # 第二行：关联网络和时间序列
+        # 第二行：关联网络和实时监测
         dbc.Row([
             dbc.Col([
                 dbc.Card([
                     dbc.CardHeader("症状-治疗-药物关联网络"),
                     dbc.CardBody([
-                        dcc.Graph(
-                            id='network-graph',
-                            figure={
-                                'data': [
-                                    go.Scatter(
-                                        x=edge_x, y=edge_y,
-                                        line=dict(width=0.5, color='#888'),
-                                        hoverinfo='none',
-                                        mode='lines'
-                                    ),
-                                    go.Scatter(
-                                        x=node_x, y=node_y,
-                                        mode='markers+text',
-                                        hoverinfo='text',
-                                        text=node_text,
-                                        marker=dict(
-                                            size=20,
-                                            color=node_color,
-                                            line_width=2
-                                        )
-                                    )
-                                ],
-                                'layout': go.Layout(
-                                    title='症状-治疗-药物关联网络',
-                                    showlegend=False,
-                                    hovermode='closest',
-                                    margin=dict(b=20,l=5,r=5,t=40),
-                                    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                                    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
-                                )
-                            }
+                        dcc.Graph(id='network-graph'),
+                        dcc.Interval(
+                            id='network-update-interval',
+                            interval=5000,
+                            n_intervals=0
                         )
                     ])
                 ], className="mb-4 shadow")
@@ -309,30 +341,13 @@ def create_dashboard(df):
             
             dbc.Col([
                 dbc.Card([
-                    dbc.CardHeader("血压和心率时间序列分析"),
+                    dbc.CardHeader("实时生命体征监测"),
                     dbc.CardBody([
-                        dcc.Graph(
-                            id='time-series',
-                            figure={
-                                'data': [
-                                    go.Scatter(
-                                        y=df.iloc[0]['bp_history'],
-                                        name='收缩压',
-                                        line=dict(color='red')
-                                    ),
-                                    go.Scatter(
-                                        y=df.iloc[0]['hr_history'],
-                                        name='心率',
-                                        line=dict(color='blue')
-                                    )
-                                ],
-                                'layout': go.Layout(
-                                    title='患者监测数据趋势',
-                                    xaxis=dict(title='监测时间点'),
-                                    yaxis=dict(title='测量值'),
-                                    hovermode='x'
-                                )
-                            }
+                        dcc.Graph(id='vitals-monitor'),
+                        dcc.Interval(
+                            id='vitals-update-interval',
+                            interval=1000,
+                            n_intervals=0
                         ),
                         html.Div([
                             dcc.Dropdown(
@@ -350,22 +365,17 @@ def create_dashboard(df):
         
         html.Hr(),
         
-        # 第三行：评估指标
+        # 第三行：治疗效果评估
         dbc.Row([
             dbc.Col([
                 dbc.Card([
-                    dbc.CardHeader("治疗效果评估"),
+                    dbc.CardHeader("治疗效果实时评估"),
                     dbc.CardBody([
-                        dcc.Graph(
-                            id='treatment-evaluation',
-                            figure=px.bar(
-                                df.groupby(['treatment', 'treatment_response']).size().reset_index(name='count'),
-                                x='treatment',
-                                y='count',
-                                color='treatment_response',
-                                title='各治疗方案效果评估',
-                                barmode='group'
-                            ).update_layout(transition_duration=500)
+                        dcc.Graph(id='treatment-evaluation'),
+                        dcc.Interval(
+                            id='evaluation-update-interval',
+                            interval=3000,
+                            n_intervals=0
                         )
                     ])
                 ], className="mb-4 shadow")
@@ -374,32 +384,133 @@ def create_dashboard(df):
         
     ], fluid=True, className="px-4 py-3")
     
+    # 回调函数：更新时间间隔
     @app.callback(
-        Output('time-series', 'figure'),
-        [Input('patient-selector', 'value')]
+        [Output('risk-update-interval', 'interval'),
+         Output('treatment-update-interval', 'interval'),
+         Output('network-update-interval', 'interval'),
+         Output('vitals-update-interval', 'interval'),
+         Output('evaluation-update-interval', 'interval')],
+        [Input('update-interval-select', 'value'),
+         Input('auto-update-switch', 'value')]
     )
-    def update_time_series(patient_index):
-        patient_data = df.iloc[patient_index]
+    def update_interval(interval_value, auto_update):
+        if not auto_update:
+            return [None] * 5
+        return [int(interval_value)] * 5
+    
+    # 回调函数：更新统计数据
+    @app.callback(
+        [Output('total-patients', 'children'),
+         Output('high-risk-patients', 'children'),
+         Output('risk-percentage', 'children')],
+        [Input('risk-update-interval', 'n_intervals')]
+    )
+    def update_stats(n):
+        total = len(df)
+        high_risk = len(df[df['risk_level'] == '高'])
+        percentage = round((high_risk / total) * 100, 1)
+        return f"{total}", f"{high_risk}", f"{percentage}%"
+    
+    # 回调函数：更新风险预测图
+    @app.callback(
+        Output('risk-prediction', 'figure'),
+        [Input('risk-update-interval', 'n_intervals')]
+    )
+    def update_risk_prediction(n):
+        return px.scatter(
+            df,
+            x='age',
+            y='systolic_bp',
+            color='risk_level',
+            size='cholesterol',
+            hover_data=['patient_id', 'gender', 'diabetes'],
+            title='实时患者风险分布',
+            labels={'age': '年龄', 'systolic_bp': '收缩压 (mmHg)'},
+            color_discrete_map={'低': 'green', '中': 'yellow', '高': 'red'},
+            animation_frame='risk_level'
+        ).update_layout(transition_duration=500)
+    
+    # 回调函数：更新治疗效果图
+    @app.callback(
+        Output('treatment-effect', 'figure'),
+        [Input('treatment-update-interval', 'n_intervals')]
+    )
+    def update_treatment_effect(n):
+        return px.sunburst(
+            df,
+            path=['treatment', 'treatment_response', 'risk_level'],
+            title='实时治疗方案效果分析',
+            color='risk_level',
+            color_discrete_map={'低': 'green', '中': 'yellow', '高': 'red'}
+        ).update_layout(transition_duration=500)
+    
+    # 回调函数：更新生命体征监测
+    @app.callback(
+        Output('vitals-monitor', 'figure'),
+        [Input('vitals-update-interval', 'n_intervals'),
+         Input('patient-selector', 'value')]
+    )
+    def update_vitals(n, patient_index):
+        # 添加新的测量值
+        app.real_time_data.append({
+            'timestamp': datetime.now(),
+            'systolic_bp': random.randint(90, 180),
+            'heart_rate': random.randint(60, 100)
+        })
+        
+        df_vitals = pd.DataFrame(app.real_time_data)
+        
         return {
             'data': [
                 go.Scatter(
-                    y=patient_data['bp_history'],
+                    x=df_vitals['timestamp'],
+                    y=df_vitals['systolic_bp'],
                     name='收缩压',
                     line=dict(color='red')
                 ),
                 go.Scatter(
-                    y=patient_data['hr_history'],
+                    x=df_vitals['timestamp'],
+                    y=df_vitals['heart_rate'],
                     name='心率',
                     line=dict(color='blue')
                 )
             ],
             'layout': go.Layout(
-                title=f'患者 {patient_data["patient_id"]} 监测数据趋势',
-                xaxis=dict(title='监测时间点'),
+                title=f'患者 {df.iloc[patient_index]["patient_id"]} 实时监测数据',
+                xaxis=dict(title='时间'),
                 yaxis=dict(title='测量值'),
-                hovermode='x'
+                hovermode='x unified',
+                transition_duration=500
             )
         }
+    
+    # 回调函数：更新治疗评估
+    @app.callback(
+        Output('treatment-evaluation', 'figure'),
+        [Input('evaluation-update-interval', 'n_intervals')]
+    )
+    def update_treatment_evaluation(n):
+        return px.bar(
+            df.groupby(['treatment', 'treatment_response']).size().reset_index(name='count'),
+            x='treatment',
+            y='count',
+            color='treatment_response',
+            title='实时治疗效果评估',
+            barmode='group',
+            animation_frame='treatment_response'
+        ).update_layout(
+            transition_duration=500,
+            updatemenus=[{
+                'type': 'buttons',
+                'showactive': False,
+                'buttons': [{
+                    'label': '播放',
+                    'method': 'animate',
+                    'args': [None, {'frame': {'duration': 1000, 'redraw': True}, 'fromcurrent': True}]
+                }]
+            }]
+        )
     
     return app
 
@@ -428,7 +539,7 @@ def perform_clustering(df):
 
 def main():
     """主函数"""
-    # 生成数据
+    # 生成初始数据
     data = generate_patient_data()
     
     # 保存数据
