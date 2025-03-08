@@ -69,6 +69,23 @@ CardioViz 是一个专注于心血管疾病数据分析和可视化的全栈项�
 ### 5. 系统测试图表 (system_test_charts)
 基于matplotlib的系统测试图表生成工具，用于性能评估和功能测试结果展示。
 
+## 数据可视化代码文件 📊
+
+项目包含多个用于生成论文中图表的Python脚本文件，使用matplotlib、seaborn、networkx等库实现各类可视化效果：
+
+- **system_test_charts.py** - 系统测试图表生成，包括功能测试覆盖率柱状图和响应时间折线图
+- **rf_model_analysis.py** - 随机森林模型分析，展示特征重要性和模型性能评估
+- **patient_clustering.py** - 患者分群分析，实现K-means聚类和分群可视化
+- **risk_prediction_model.py** - 风险预测模型，包括模型评估指标和ROC曲线
+- **risk_factor_weights.py** - 风险因素权重分析，展示各因素对疾病风险的影响程度
+- **feature_correlation.py** - 特征相关性分析，包括相关性热力图和特征分布图
+- **network_visualization.py** - 复杂网络可视化，展示症状-治疗-药物关联网络
+- **simple_network_viz.py** - 简化网络可视化，用于概念展示
+- **system_architecture.py** - 系统架构图，展示系统各组件间的关系
+- **functional_modules.py** - 功能模块图，展示系统主要功能模块
+
+这些脚本文件生成的图表均用于论文《基于人类心血管疾病的数据挖掘及可视化》的相关章节，提供了数据分析结果的直观展示。
+
 ## 项目学术研究 📚
 
 本项目已完成相关学术论文《基于人类心血管疾病的数据挖掘及可视化》，论文详细介绍了系统设计思路、实现技术、数据挖掘方法以及可视化效果评估。主要内容包括：
@@ -81,7 +98,7 @@ CardioViz 是一个专注于心血管疾病数据分析和可视化的全栈项�
 - 第六章：后端系统实现
 - 第七章：系统测试结果
 
-论文中的图表生成代码已集成到`system_test_charts.py`文件中，可用于生成系统评估报告。
+论文中的图表生成代码已集成到相应的Python文件中，可用于复现论文中的各种可视化图表。
 
 ## 项目结构 📁
 
@@ -100,6 +117,19 @@ CardioViz/
 │   │   └── main.js       # 入口文件
 │   ├── package.json      # 前端依赖
 │   └── vite.config.js    # Vite配置
+├── img/                   # 图片资源目录
+├── 基于人类心血管疾病的数据挖掘及可视化.doc  # 项目论文
+├── system_test_charts.py  # 系统测试图表生成
+├── rf_model_analysis.py   # 随机森林模型分析
+├── patient_clustering.py  # 患者分群分析
+├── risk_prediction_model.py # 风险预测模型
+├── risk_factor_weights.py # 风险因素权重分析
+├── feature_correlation.py # 特征相关性分析
+├── network_visualization.py # 网络可视化
+├── simple_network_viz.py  # 简化网络可视化
+├── system_architecture.py # 系统架构图
+├── functional_modules.py  # 功能模块图
+├── main.py               # 主程序
 └── README.md             # 项目文档
 ```
 
