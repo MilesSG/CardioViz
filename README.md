@@ -4,7 +4,8 @@
 
 CardioViz 是一个专注于心血管疾病数据分析和可视化的全栈项目。通过前后端分离架构，结合数据挖掘和交互式可视化技术，为医疗专业人员提供直观的患者风险评估和治疗效果分析工具。
 
-![系统运行截图](img/dashboard.png)
+项目截屏：
+![系统运行截图](img/image.png)
 
 ## 功能特点 ✨
 
@@ -49,246 +50,24 @@ CardioViz 是一个专注于心血管疾病数据分析和可视化的全栈项�
 - **构建工具**: Vite
 - **开发语言**: JavaScript/TypeScript
 
-## 可视化实现代码 🎨
+## 可视化组件 🎨
 
-### 1. 风险分布可视化 (RiskDistributionChart.vue)
+系统实现了多种可视化组件，为医疗决策提供支持：
 
-多维散点图实现了患者风险分布的直观展示，通过年龄、血压和胆固醇等多维数据映射:
+### 1. 风险分布可视化 (RiskDistributionChart)
+多维散点图实现了患者风险分布的直观展示，通过年龄、血压和胆固醇等多维数据映射，使用不同颜色区分风险等级。
 
-```javascript
-// 风险分布多维散点图
-const processData = (data) => {
-  return data.map(p => {
-    return {
-      ...p,
-      value: [p.age || 0, p.systolic_bp || 0],
-      symbolSize: Math.sqrt((p.cholesterol || 0) / 3)
-    }
-  })
-}
+### 2. 关联网络可视化 (NetworkAnalysisChart)
+症状-治疗-药物关联网络图展示了医疗概念之间的复杂关系，通过力导向图布局和节点分类着色实现直观表达。
 
-const chartOption = computed(() => {
-  return {
-    xAxis: {
-      type: 'value',
-      name: '年龄',
-      min: 18,
-      max: 90
-    },
-    yAxis: {
-      type: 'value',
-      name: '收缩压 (mmHg)',
-      min: 80,
-      max: 200
-    },
-    series: [
-      {
-        type: 'scatter',
-        name: '低风险',
-        data: processedData.value.filter(p => p.riskLevel === '低'),
-        itemStyle: { color: '#67C23A' }
-      },
-      {
-        type: 'scatter',
-        name: '中风险',
-        data: processedData.value.filter(p => p.riskLevel === '中'),
-        itemStyle: { color: '#E6A23C' }
-      },
-      {
-        type: 'scatter',
-        name: '高风险',
-        data: processedData.value.filter(p => p.riskLevel === '高'),
-        itemStyle: { color: '#F56C6C' }
-      }
-    ]
-  }
-})
-```
+### 3. 治疗效果可视化 (TreatmentEffectChart)
+旭日图和饼图展示了不同治疗方案的效果分布，支持图表类型切换和动画效果，增强数据理解。
 
-### 2. 关联网络可视化 (NetworkAnalysisChart.vue)
+### 4. 实时监测可视化 (VitalsMonitorChart)
+生命体征实时监测图表，展示患者血压和心率的动态变化，包括双Y轴设计和异常值预警功能。
 
-症状-治疗-药物关联网络图展示了医疗概念之间的复杂关系:
-
-```javascript
-// 关联网络处理
-const processNetworkData = (data) => {
-  const nodes = new Map()
-  const edges = new Map()
-  const categories = ['症状', '治疗', '药物']
-  
-  data.forEach(patient => {
-    // 添加症状节点
-    patient.symptoms.forEach(symptom => {
-      if (!nodes.has(symptom)) {
-        nodes.set(symptom, {
-          id: symptom,
-          name: symptom,
-          symbolSize: 15,
-          category: 0  // 症状类别
-        })
-      }
-      
-      // 连接症状和治疗
-      patient.treatments.forEach(treatment => {
-        if (!nodes.has(treatment)) {
-          nodes.set(treatment, {
-            id: treatment,
-            name: treatment,
-            symbolSize: 20,
-            category: 1  // 治疗类别
-          })
-        }
-        
-        // 创建症状-治疗边
-        const edgeKey = `${symptom}-${treatment}`
-        if (!edges.has(edgeKey)) {
-          edges.set(edgeKey, {
-            source: symptom,
-            target: treatment,
-            value: 1
-          })
-        } else {
-          edges.get(edgeKey).value += 1  // 增加边的权重
-        }
-      })
-    })
-  })
-
-  return {
-    nodes: Array.from(nodes.values()),
-    edges: Array.from(edges.values()),
-    categories: categories.map(name => ({ name }))
-  }
-}
-```
-
-### 3. 治疗效果可视化 (TreatmentEffectChart.vue)
-
-旭日图和饼图展示了不同治疗方案的效果分布:
-
-```javascript
-// 治疗效果图表配置
-const chartOption = computed(() => {
-  if (chartType.value === 'sunburst') {
-    return {
-      title: { text: '治疗方案效果分布' },
-      series: [{
-        type: 'sunburst',
-        data: processedData.value,
-        radius: ['20%', '90%'],
-        label: { show: true },
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
-          }
-        }
-      }]
-    }
-  } else {
-    return {
-      title: { text: '治疗方案效果比例' },
-      series: [{
-        type: 'pie',
-        data: processedData.value.map(item => ({
-          name: item.name,
-          value: item.value
-        })),
-        radius: '75%'
-      }]
-    }
-  }
-})
-```
-
-### 4. 实时监测可视化 (VitalsMonitorChart.vue)
-
-生命体征实时监测图表，展示患者血压和心率的动态变化:
-
-```javascript
-// 生命体征监测图表
-const chartOption = computed(() => {
-  return {
-    title: { text: '生命体征监测', left: 'center' },
-    tooltip: { trigger: 'axis' },
-    legend: {
-      data: ['收缩压', '舒张压', '心率'],
-      top: 30
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: timeData.value
-    },
-    yAxis: [
-      {
-        type: 'value',
-        name: '血压(mmHg)',
-        min: 40,
-        max: 200
-      },
-      {
-        type: 'value',
-        name: '心率(bpm)',
-        min: 40,
-        max: 180
-      }
-    ],
-    series: [
-      {
-        name: '收缩压',
-        type: 'line',
-        yAxisIndex: 0,
-        data: systolicData.value,
-        lineStyle: { color: '#F56C6C' }
-      },
-      {
-        name: '舒张压',
-        type: 'line',
-        yAxisIndex: 0,
-        data: diastolicData.value,
-        lineStyle: { color: '#E6A23C' }
-      },
-      {
-        name: '心率',
-        type: 'line',
-        yAxisIndex: 1,
-        data: heartRateData.value,
-        lineStyle: { color: '#409EFF' }
-      }
-    ]
-  }
-})
-```
-
-### 5. 系统测试图表生成 (system_test_charts.py)
-
-基于matplotlib的系统测试图表生成:
-
-```python
-# 功能测试覆盖率和通过率柱状图
-def create_test_coverage_chart():
-    # 测试数据
-    modules = ['风险分布', '治疗效果', '关联网络', '实时监测', '多视图联动', '整体结果']
-    coverage_rates = [98, 95, 92, 97, 99, 96.2]
-    pass_rates = [100, 97, 88, 98, 100, 96.2]
-
-    # 创建图表
-    plt.figure(figsize=(10, 6))
-    x = np.arange(len(modules))
-    width = 0.35
-
-    # 绘制柱状图
-    bars1 = plt.bar(x - width/2, coverage_rates, width, label='测试覆盖率 (%)', color='#3498db')
-    bars2 = plt.bar(x + width/2, pass_rates, width, label='测试通过率 (%)', color='#2ecc71')
-    
-    # 标签和样式设置
-    plt.xlabel('功能模块', fontsize=12, fontweight='bold')
-    plt.ylabel('百分比 (%)', fontsize=12, fontweight='bold')
-    plt.title('图7-1: 功能测试覆盖率和通过率', fontsize=14, fontweight='bold')
-    plt.xticks(x, modules, fontsize=10)
-    plt.ylim(0, 105)
-```
+### 5. 系统测试图表 (system_test_charts)
+基于matplotlib的系统测试图表生成工具，用于性能评估和功能测试结果展示。
 
 ## 项目学术研究 📚
 
@@ -397,3 +176,20 @@ npm run dev
 - [ ] 完善错误处理机制
 - [ ] 添加单元测试
 
+## 贡献指南 🤝
+
+欢迎提交问题和改进建议！请遵循以下步骤：
+1. Fork 项目
+2. 创建新分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 提交 Pull Request
+
+## 许可证 📄
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+## 联系方式 📧
+
+项目维护者: MilesSG
+GitHub: [@MilesSG](https://github.com/MilesSG)
